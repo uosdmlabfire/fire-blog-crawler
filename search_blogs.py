@@ -7,12 +7,11 @@ import re
 import json
 import urllib
 import urllib.request
-from lxml import html
 from datetime import datetime, timedelta, date
 
 # search date option
-START_DATE = date(2015, 9, 16)
-END_DATE = date(2016, 1, 31)
+START_DATE = date(2015, 1, 1)
+END_DATE = date(2015, 12, 31)
 
 # query
 QUERY_WORDS = '화재 -삼성화재 -동부화재 -메리츠화재'
@@ -92,15 +91,22 @@ def reshape_date(date):
 
 
 # write data to UTF-8 by ensure_ascii option
-def write_data(data):
-    with open("test.json", 'a') as outfile:
+def write_data(date, data):
+    with open("./out_blog/fire_blog/"+date.strftime("%Y%m%d")+".json", 'a+') as outfile:
         json.dump(data, outfile, ensure_ascii=False)
         outfile.write("\n")
 
-
-def get_maintxt(page):
-    tree = html.fromstring(page.content)
-    pass
+# get blog's maintext of html by host
+def get_maintext(page, host):
+    content = bs4.BeautifulSoup(page.content)
+    if host == "naver":
+        body = content.find("div", attrs={'id': 'postViewArea'})
+    else:
+        body_list = [content.find(attrs={'id': 'entry'}),
+                     content.find(attrs={'class': 'entry'}),
+                     content.find("body")]
+        body = next(item for item in body_list if item is not None)
+    return body.text
 
 
 def main():
@@ -141,7 +147,12 @@ def main():
                 # get blog's title and link
                 title_and_link = blog.findAll("a")[0]
                 title = title_and_link.text
-                link = title_and_link["href"].encode('utf-8')
+                link = title_and_link["href"]
+
+                # get blog's html except host is daum
+                # daum blog's html is not readable because of frame tag
+                if re.search('blog.daum.net', link):
+                    continue
 
                 # get blog's host
                 host = get_host(link)
@@ -151,27 +162,34 @@ def main():
                 # reshape date to "%Y-%m-%d" format
                 date = reshape_date(date)
 
-                # get blog's html except host is daum
-                # daum blog's html is not readable because of frame tag
-                if re.search('blog.daum.net', link):
+                try:
+                    # requests
+                    blog_page = requests.get(link)
+                    # get blog's original html
+                    blog_html = blog_page.text.strip()
+                except Exception as e:
+                    print(e)
+                    print(link)
                     continue
-                else:
-                    try:
-                        # requests
-                        blog_page = requests.get(link)
-                        # get blog's original html
-                        blog_html = bs4.BeautifulSoup(blog_page.text)
-                        # get blog's maintext
 
-                        # one blog data to write
-                        blog_data = {"query": QUERY_WORDS, "title": title, "host": host, "link": link, "date": date,
-                                     "content": blog_html.text.strip()}
-                        # write data to UTF-8 by ensure_ascii option
-                        write_data(blog_data)
-                    except Exception as e:
-                        print(e)
-                        print(link.encode('utf-8'))
-                        continue
+                # get blog's maintext
+                try:
+                    blog_main = get_maintext(blog_page, host)
+                except Exception as e:
+                    blog_main = 0
+                    print(e)
+                    print(link)
+                    continue
+
+                # one blog data to write blog_html.text.strip()
+                blog_data = {"query": QUERY_WORDS, "title": title, "host": host, "link": link, "date": date,
+                            "content": blog_html, "body": blog_main}
+                # write data to UTF-8 by ensure_ascii option
+                try:
+                    write_data(single_date, blog_data)
+                except Exception as e:
+                    print(e)
+                    print(link)
 
                 # count number of blogs that wrote to file
                 count += 1
