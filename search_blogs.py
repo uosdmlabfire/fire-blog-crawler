@@ -10,8 +10,8 @@ import urllib.request
 from datetime import datetime, timedelta, date
 
 # search date option
-START_DATE = date(2015, 1, 1)
-END_DATE = date(2015, 12, 31)
+START_DATE = date(2010, 1, 1)
+END_DATE = date(2014, 12, 31)
 
 # query
 QUERY_WORDS = '화재 -삼성화재 -동부화재 -메리츠화재'
@@ -53,7 +53,7 @@ def page_count(html):
 
 # get blog list
 def get_blog_list(html):
-    blogs = html.findAll("div", attrs={'id': 'blogColl'})[0]
+    blogs = html.find("div", attrs={'id': 'blogColl'})
     blogs = blogs.findAll("div", attrs={'class': 'cont_inner'})
     return blogs
 
@@ -89,13 +89,6 @@ def reshape_date(date):
         date = date.strftime("%Y-%m-%d")
     return date
 
-
-# write data to UTF-8 by ensure_ascii option
-def write_data(date, data):
-    with open("./out_blog/fire_blog/"+date.strftime("%Y%m%d")+".json", 'a+') as outfile:
-        json.dump(data, outfile, ensure_ascii=False)
-        outfile.write("\n")
-
 # get blog's maintext of html by host
 def get_maintext(page, host):
     content = bs4.BeautifulSoup(page.content)
@@ -108,6 +101,11 @@ def get_maintext(page, host):
         body = next(item for item in body_list if item is not None)
     return body.text
 
+# write data to UTF-8 by ensure_ascii option
+def write_data(date, data):
+    with open("./out_blog/fire_blog/"+date+".json", 'a+') as outfile:
+        json.dump(data, outfile, ensure_ascii=False)
+        outfile.write("\n")
 
 def main():
     # the number of articles
@@ -131,7 +129,7 @@ def main():
         # parsing blogs per page
         for page in range(1, int(pages) + 1):
 
-            # get one page's url
+            # get one page's url (blog's option is '&page=')
             target_url = base_url + "&page=" + str(page)
 
             # get blog list
@@ -149,7 +147,7 @@ def main():
                 title = title_and_link.text
                 link = title_and_link["href"]
 
-                # get blog's html except host is daum
+                # get blog except host is daum
                 # daum blog's html is not readable because of frame tag
                 if re.search('blog.daum.net', link):
                     continue
@@ -162,10 +160,10 @@ def main():
                 # reshape date to "%Y-%m-%d" format
                 date = reshape_date(date)
 
+                # get blog's original html
                 try:
                     # requests
                     blog_page = requests.get(link)
-                    # get blog's original html
                     blog_html = blog_page.text.strip()
                 except Exception as e:
                     print(e)
@@ -186,7 +184,7 @@ def main():
                             "content": blog_html, "body": blog_main}
                 # write data to UTF-8 by ensure_ascii option
                 try:
-                    write_data(single_date, blog_data)
+                    write_data(date, blog_data)
                 except Exception as e:
                     print(e)
                     print(link)
