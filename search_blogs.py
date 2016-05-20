@@ -10,12 +10,11 @@ import urllib.request
 from datetime import datetime, timedelta, date
 
 # search date option
-START_DATE = date(2010, 1, 1)
+START_DATE = date(2010, 6, 1)
 END_DATE = date(2014, 12, 31)
 
 # query
 QUERY_WORDS = '화재 -삼성화재 -동부화재 -메리츠화재'
-
 
 # date range function
 def daterange(start_date, end_date):
@@ -177,17 +176,17 @@ def main():
                     blog_main = 0
                     print(e)
                     print(link)
-                    continue
 
-                # one blog data to write blog_html.text.strip()
+                # one blog data to write
                 blog_data = {"query": QUERY_WORDS, "title": title, "host": host, "link": link, "date": date,
                             "content": blog_html, "body": blog_main}
-                # write data to UTF-8 by ensure_ascii option
+                # write data
                 try:
                     write_data(date, blog_data)
                 except Exception as e:
                     print(e)
                     print(link)
+                    continue
 
                 # count number of blogs that wrote to file
                 count += 1
